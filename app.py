@@ -7,22 +7,23 @@ app = Flask(__name__)
 CORS(app)  # Allow all domains or specify allowed domains
 
 # Set your OpenAI API key here
-openai.api_key = "your-openai-api-key"
+openai.api_key = "your-openai-api-key"  # Replace with your actual API key
 
 def generate_questions_with_openai(topic, num_questions):
     try:
         prompt = f"Generate {num_questions} multiple-choice questions about {topic}."
         
         response = openai.Completion.create(
-            engine="text-davinci-003",  # Or use a different GPT model
+            engine="text-davinci-003",  # You can also try newer models like "gpt-3.5-turbo" if available
             prompt=prompt,
-            max_tokens=100 * num_questions,  # You can tweak this
+            max_tokens=150 * num_questions,  # Slightly increased to avoid truncation
             n=1,
             stop=None,
             temperature=0.7,
         )
         
-        questions = response.choices[0].text.strip().split('\n')
+        # Ensure questions are parsed correctly
+        questions = [q.strip() for q in response.choices[0].text.strip().split('\n') if q.strip()]
         return questions
     except Exception as e:
         return str(e)
@@ -30,11 +31,19 @@ def generate_questions_with_openai(topic, num_questions):
 @app.route('/generate-quiz', methods=['GET'])
 def generate_quiz():
     topic = request.args.get('topic')
-    num_questions = int(request.args.get('num_questions'))
+    num_questions = request.args.get('num_questions')
 
-    if not topic or num_questions <= 0:
-        return jsonify({"error": "Invalid topic or number of questions."}), 400
+    # Handle missing parameters
+    if not topic or not num_questions:
+        return jsonify({"error": "Please provide both 'topic' and 'num_questions' parameters."}), 400
     
+    try:
+        num_questions = int(num_questions)
+        if num_questions <= 0:
+            raise ValueError
+    except ValueError:
+        return jsonify({"error": "Invalid number of questions. Please provide a positive integer."}), 400
+
     questions = generate_questions_with_openai(topic, num_questions)
     
     if isinstance(questions, str):  # If an error message is returned
@@ -46,4 +55,4 @@ def generate_quiz():
     })
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
