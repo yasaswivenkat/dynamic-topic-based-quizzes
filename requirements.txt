@@ -1,4 +1,4 @@
 flask
 flask-cors
 gunicorn
-openai==<version>
+openai==<1.54.3>
